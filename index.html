@@ -1,67 +1,129 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Cute Quote Widget</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #0b0f11;     /* fallback background */
+    --text: #eaf3ee;
+    --accent: #a6e0be;
+    --muted: #9fb2a8;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
   body {
-    margin: 0;
-    height: 100vh;
+    background: var(--bg);
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #0b0f11;
     font-family: 'Quicksand', sans-serif;
+    color: var(--text);
   }
 
   .widget {
     position: relative;
-    width: 300px; /* match your PNG width */
-    height: 100px; /* match your PNG height */
-    background: url('quote_widget.png') center/cover no-repeat;
-    display: flex;
+    width: 300px;   /* adjust to your PNG’s width */
+    height: 200px;  /* adjust to your PNG’s height */
+    background: url('widget.png') center/cover no-repeat;
+    border-radius: 16px;
+    display: grid;
+    grid-template-rows: 1fr auto; 
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: #eaf3ee;
+    padding: 12px;
     text-align: center;
-    border-radius: 16px;
+  }
+  .quote-wrap{
+    position: relative;
+    display: inline-block;
+    max-width: 88;
+    padding-bottom: 16px;
+    padding-left: 100;
+
   }
 
   .quote {
-    font-size: 14px;
-    line-height: 1.4;
-    margin: 0 12px;
+    font-size: 12px;
+    line-height: 1.35;
+    margin: 0 10px;
+    text-shadow: 0 0 6px rgba(0,0,0,0.4);
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
 
   .author {
-    font-size: 12px;
-    color: #a6e0be;
-    margin-top: 4px;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    margin: 0;
+    font-size: 10px;
+    color: var(--accent);
+    text-shadow: 0 0 4px rgba(0,0,0,0.4);
+    white-space: nowrap;
   }
 </style>
 </head>
 <body>
   <div class="widget">
-    <div id="quote" class="quote">Loading...</div>
+    <div class="quote-wrap">
+    <div id="quote" class="quote">Loading…</div>
     <div id="author" class="author"></div>
   </div>
+</div>
 
 <script>
 async function loadQuotes() {
-  const res = await('quotes.csv', {cache: 'no-store'}); 
+  const res = await fetch('quotes.csv', { cache: 'no-store' });
+  const txt = await res.text();
+
+  // Split lines, ignore empty
+  const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  // Remove header if present
+  const first = lines[0].replace(/\s+/g,'').toLowerCase();
+  const rows = (first === 'author,quote') ? lines.slice(1) : lines;
+
+  // Basic CSV parse (handles commas inside quotes)
+  return rows.map(line => {
+    const cells = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === ',' && !inQuotes) { cells.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    cells.push(cur.trim());
+    const a = (cells[0] || '').replace(/^"|"$/g,'');
+    const q= (cells[1] || '').replace(/^"|"$/g,'');
+    return [q, a];
   });
 }
-function dayIndex(){return Math.floor(Date.now()/86400000);}
-function render(q,a){
+
+function dayIndex() {
+  return Math.floor(Date.now() / 86400000);
+}
+
+function render(q, a) {
   document.getElementById('quote').textContent = `“${q}”`;
   document.getElementById('author').textContent = a ? `— ${a}` : '';
 }
-(async()=>{
-  const list = await loadQuotes();
-  const i = dayIndex() % list.length;
-  render(...list[i]);
+
+(async function() {
+  try {
+    const list = await loadQuotes();
+    const i = Math.floor(Math.random() * list.length);  // daily rotation
+    render(...list[i]);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('quote').textContent = 'Error loading quotes 😢';
+  }
 })();
 </script>
 </body>
