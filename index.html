@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cute Quote Widget</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #0b0f11;
+    font-family: 'Quicksand', sans-serif;
+  }
+
+  .widget {
+    position: relative;
+    width: 300px; /* match your PNG width */
+    height: 100px; /* match your PNG height */
+    background: url('quote_widget.png') center/cover no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #eaf3ee;
+    text-align: center;
+    border-radius: 16px;
+  }
+
+  .quote {
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0 12px;
+  }
+
+  .author {
+    font-size: 12px;
+    color: #a6e0be;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="widget">
+    <div id="quote" class="quote">Loading...</div>
+    <div id="author" class="author"></div>
+  </div>
+
+<script>
+async function loadQuotes() {
+  const res = await('quotes.csv', {cache: 'no-store'}); 
+  });
+}
+function dayIndex(){return Math.floor(Date.now()/86400000);}
+function render(q,a){
+  document.getElementById('quote').textContent = `“${q}”`;
+  document.getElementById('author').textContent = a ? `— ${a}` : '';
+}
+(async()=>{
+  const list = await loadQuotes();
+  const i = dayIndex() % list.length;
+  render(...list[i]);
+})();
+</script>
+</body>
+</html>
