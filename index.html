@@ -7,124 +7,142 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0b0f11;     /* fallback background */
-    --text: #eaf3ee;
-    --accent: #a6e0be;
-    --muted: #9fb2a8;
+  :root{
+    --ink:#1e2321;     /* quote text color */
+    --accent:#365c49;  /* author color */
   }
 
-  * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; }
-  body {
-    background: transparent;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Quicksand', sans-serif;
-    color: var(--text);
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:transparent;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Quicksand',sans-serif;color:var(--ink);
   }
 
-  .widget {
-    position: relative;
-    width: 300px;   
-    height: 200px;  
-    background: url('widget.png') center/cover no-repeat;
-    border-radius: 16px;
-    display: grid;
-    grid-template-rows: 1fr auto; 
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 12px;
-    text-align: center;
-  }
-  .quote-wrap{
-    position: relative;
-    display: inline-block;
-    max-width: 88;
-    padding-bottom: 16px;
-    padding-left: 100;
-
+  /* Your PNG size */
+  .widget{
+    position:relative;
+    width: 550px;
+    height: 300px;
+    background:url('quote_widget.png') center/cover no-repeat;
+    border-radius:18px;
   }
 
-  .quote {
-    font-size: 11px;
-    line-height: 1.35;
-    margin: 0 10px;
-    text-shadow: 0 0 6px rgba(0,0,0,0.4);
-    overflow-wrap: anywhere;
-    hyphens: auto;
-    padding-bottom: 10px;
-    padding-top: 5px;
+  /* Safe area inside the cream panel */
+  .content{
+    position:absolute;
+    /* TUNE THESE if needed */
+    top: 100px;        /* push below “Motivational Quote:” */
+    right: 150px;      /* avoid right border/quotes */
+    bottom: 52px;     /* avoid bottom border/shadow */
+    left: 150px;       /* avoid left border/opening quotes */
   }
 
-  .author {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 4px);
-    margin: 0;
-    font-size: 10px;
-    color: var(--bg);
-    text-shadow: 0 0 4px rgba(0,0,0,0.4);
-    white-space: nowrap;
+  .quote{
+    margin:0;
+    font-size: 40px;         /* will auto-shrink if needed */
+    line-height:1.35;
+    text-wrap:balance;
+    overflow-wrap:anywhere;
+    hyphens:auto;
+  }
+
+  /* Author anchored inside lower-right of the content box */
+  .author{
+    position:absolute;
+    right: 2px;
+    bottom: 6px;
+    margin:0;
+    font-size: 15px;
+    color:var(--accent);
+    white-space:nowrap;
+    text-overflow:auto;
+   
+    max-width:60%;
   }
 </style>
 </head>
 <body>
   <div class="widget">
-    <div class="quote-wrap">
-    <div id="quote" class="quote">Loading…</div>
-    <div id="author" class="author"></div>
+    <div class="content" id="content">
+      <div id="quote" class="quote">Loading…</div>
+      <div id="author" class="author"></div>
+    </div>
   </div>
-</div>
 
 <script>
-async function loadQuotes() {
-  const res = await fetch('quotes.csv', { cache: 'no-store' });
+/* CSV loader: Author,Quote */
+async function loadQuotes(){
+  const res = await fetch('quotes.csv',{cache:'no-store'});
   const txt = await res.text();
-
-  // Split lines, ignore empty
-  const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-  // Remove header if present
+  const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return [];
   const first = lines[0].replace(/\s+/g,'').toLowerCase();
-  const rows = (first === 'author,quote') ? lines.slice(1) : lines;
+  const rows = (first==='author,quote') ? lines.slice(1) : lines;
 
-  // Basic CSV parse (handles commas inside quotes)
-  return rows.map(line => {
-    const cells = [];
-    let cur = '', inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if (ch === ',' && !inQuotes) { cells.push(cur.trim()); cur = ''; continue; }
-      cur += ch;
+  return rows.map(line=>{
+    const cells=[]; let cur='', inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i], nx=line[i+1];
+      if(ch==='\"' && nx==='\"'){ cur+='\"'; i++; continue; }
+      if(ch==='\"'){ inQ=!inQ; continue; }
+      if(ch===',' && !inQ){ cells.push(cur.trim()); cur=''; continue; }
+      cur+=ch;
     }
     cells.push(cur.trim());
-    const a = (cells[0] || '').replace(/^"|"$/g,'');
-    const q= (cells[1] || '').replace(/^"|"$/g,'');
-    return [q, a];
+    const a=(cells[0]||'').replace(/^\"|\"$/g,'');
+    const q=(cells[1]||'').replace(/^\"|\"$/g,'');
+    return [q,a];
   });
 }
 
-function dayIndex() {
-  return Math.floor(Date.now() / 86400000);
+/* Auto-fit quote into the content area */
+function autoFit(el, container, {max=40, min=14, step=1, lines=5}={}){
+  let size=max;
+  el.style.fontSize=size+'px';
+  el.style.lineHeight='1.35';
+  el.style.display='';
+
+  const fits=()=>(
+    el.scrollHeight <= container.clientHeight*0.78 &&   // leave room for author
+    el.scrollWidth  <= container.clientWidth*0.98
+  );
+
+  while(size>min && !fits()){
+    size-=step;
+    el.style.fontSize=size+'px';
+  }
+
+  if(!fits()){
+    el.style.display='-webkit-box';
+    el.style.webkitBoxOrient='vertical';
+    el.style.webkitLineClamp=String(lines);
+    el.style.overflow='hidden';
+    el.title=el.textContent;
+  }else{
+    el.title='';
+  }
 }
 
-function render(q, a) {
-  document.getElementById('quote').textContent = `“${q}”`;
-  document.getElementById('author').textContent = a ? `— ${a}` : '';
+function render(q,a){
+  const qEl=document.getElementById('quote');
+  const aEl=document.getElementById('author');
+  const box=document.getElementById('content');
+  qEl.textContent = q ? `“${q}”` : '';
+  aEl.textContent = a ? `— ${a}` : '';
+  autoFit(qEl, box, {max:40, min:14, lines:5});
 }
 
-(async function() {
-  try {
-    const list = await loadQuotes();
-    const i = Math.floor(Math.random() * list.length);  // daily rotation
+(async function(){
+  try{
+    const list=await loadQuotes();
+    if(!list.length){ document.getElementById('quote').textContent='No quotes found.'; return; }
+    const i=Math.floor(Math.random()*list.length);  // random on load
     render(...list[i]);
-  } catch (err) {
-    console.error(err);
-    document.getElementById('quote').textContent = 'Error loading quotes 😢';
+  }catch(e){
+    console.error(e);
+    document.getElementById('quote').textContent='Error loading quotes 😢';
   }
 })();
 </script>
